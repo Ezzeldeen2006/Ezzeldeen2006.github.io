@@ -1,58 +1,72 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | 7th Game</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!-- This page only ever exists inside an iframe on a project page; it should never be a
+         search result of its own. -->
+    <meta name="robots" content="noindex">
+    <title>7th Game</title>
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
   <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+    <!--
+      Replaces Unity's generated index.html.
+
+      The default template assumes the build owns a whole browser tab. It hardcodes the canvas
+      to 960x600 on desktop and centres it on a white page, so inside an 835x470 iframe the
+      canvas overflowed both axes: scrollbars appeared, the visible region was the middle of
+      the Unity splash, and everything around it was white. To a visitor that is a white
+      screen.
+
+      Three things changed, each fixing a distinct failure:
+
+        1. The canvas is sized in CSS to fill its container instead of 960x600 in JS. Unity
+           keeps the render target matched to the canvas's DOM size, so the game renders at
+           the embed's actual resolution rather than being cropped.
+
+        2. The page is the site's near-black, not white. No flash before the first frame.
+
+        3. Failures render into #unity-warning instead of calling alert(). The embed is a
+           sandboxed iframe WITHOUT allow-modals, so the browser blocks alert() silently --
+           the default template's error path was incapable of showing an error here at all.
+
+      This IS that template. Unity's preprocessor substitutes the triple-brace macros below
+      when it copies this into a build, so a rebuild produces an embeddable page rather than
+      the default one.
+
+      Do NOT write an example macro in prose here. The preprocessor evaluates the contents of
+      every triple-brace group as JavaScript -- including ones inside an HTML comment -- so a
+      placeholder written to illustrate the syntax fails the build with
+      'Preprocessor error "SyntaxError: Unexpected token (1:1)"'.
+    -->
+    <div id="unity-container">
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+
       <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
+        <div id="unity-loading-label">Loading</div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">7th Game</div>
-      </div>
+
+      <div id="unity-warning" role="alert"></div>
     </div>
+
     <script>
       var canvas = document.querySelector("#unity-canvas");
+      var warning = document.querySelector("#unity-warning");
+      var loadingBar = document.querySelector("#unity-loading-bar");
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+      function showMessage(msg, type) {
+        if (type === "error") {
+          loadingBar.style.display = "none";
+          warning.style.display = "block";
+          warning.textContent = msg;
         }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL.loader.js";
       var config = {
         arguments: [],
         dataUrl: buildUrl + "/WebGL.data.unityweb",
@@ -62,72 +76,35 @@
         companyName: "DefaultCompany",
         productName: "7th Game",
         productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
+        showBanner: showMessage,
       };
 
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
+      loadingBar.style.display = "block";
 
       var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
+      script.src = buildUrl + "/WebGL.loader.js";
 
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+      // The loader failing to load is a separate case from the instance failing, and the
+      // default template handled neither visibly. A 404 on the loader left the page blank
+      // forever with the progress bar stuck at zero and nothing in the console.
+      script.onerror = function () {
+        showMessage("Could not load the game files. Try reloading the page.", "error");
+      };
+
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then(function (unityInstance) {
+          loadingBar.style.display = "none";
+          window.unityInstance = unityInstance;
+        }).catch(function (message) {
+          // NOT alert(). See above -- a sandboxed iframe blocks it silently, which is how a
+          // hard failure became an unexplained blank frame.
+          showMessage(String(message), "error");
+        });
+      };
 
       document.body.appendChild(script);
-
     </script>
   </body>
 </html>
