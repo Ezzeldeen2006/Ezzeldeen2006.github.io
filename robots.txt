@@ -1,0 +1,5 @@
+User-Agent: *
+Allow: /
+Disallow: /play/
+
+Sitemap: https://ezzsalah.me/sitemap.xml
